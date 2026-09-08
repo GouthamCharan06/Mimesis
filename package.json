@@ -1,0 +1,26 @@
+{
+  "name": "mimesis",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Agentic AI Creative Director for short-form video content",
+  "scripts": {
+    "dev:web": "cd apps/web && npm run dev",
+    "build:web": "cd apps/web && npm run build",
+    "lint:web": "cd apps/web && npm run lint",
+    "dev:agent": "cd services/agent && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "test:agent": "cd services/agent && python -m pytest tests/ -v",
+    "lint:agent": "cd services/agent && ruff check app/ tests/",
+    "format:agent": "cd services/agent && ruff format app/ tests/",
+    "typecheck:agent": "cd services/agent && mypy app/",
+    "dev": "concurrently \"npm run dev:agent\" \"npm run dev:web\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "framer-motion": "^13.1.0",
+    "lucide-react": "^1.33.0",
+    "tailwind-merge": "^3.6.0"
+  }
+}
