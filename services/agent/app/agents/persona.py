@@ -23,10 +23,12 @@ class ExpertPersonaAgent:
         if not session.expert_profile or not session.current_question or not session.active_research_plan or not session.active_research_plan.assessment:
              return session # Cannot generate without complete grounding and context!
 
+        recent_context = " ".join([turn.text_content for turn in session.turns[-3:]])
         prompt = EXPERT_PERSONA_PROMPT.format(
             name=session.expert_profile.name,
             communication_style=session.expert_profile.communication_style,
             perspective=session.expert_profile.perspective,
+            recent_context=recent_context,
             user_question=session.current_question.text_content,
             synthesis_summary=session.active_research_plan.assessment.synthesis_summary,
             is_uncertain=session.active_research_plan.assessment.is_uncertain,

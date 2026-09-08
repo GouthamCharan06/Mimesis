@@ -39,6 +39,8 @@ class AudioAgent:
              await asyncio.gather(*tasks)
                          
         except Exception as e:
+             from app.core.logging import get_logger
+             get_logger(__name__).error("fatal_tts_error_bypassed", error=str(e))
              session.error_message = f"TTS Audio generation failed: {e}"
              
         return session

@@ -7,10 +7,12 @@ executed against real external search infrastructure.
 
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any
 
 import httpx
+from dotenv import load_dotenv
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -33,7 +35,10 @@ class ParallelSearchTool:
     def __init__(self) -> None:
         settings = get_settings()
         self._server_url = settings.parallel_mcp_server_url
-        self._api_key = settings.parallel_api_key
+        
+        load_dotenv(override=True)
+        self._api_key = os.getenv("PARALLEL_API_KEY") or settings.parallel_api_key
+        
         self._client = httpx.AsyncClient(timeout=60.0)
         logger.info("parallel_search_tool_initialized", server_url=self._server_url)
 
@@ -104,7 +109,10 @@ class ParallelSearchTool:
         # --- OFFICIAL PARALLEL-WEB SDK IMPLEMENTATION ---
         from parallel import AsyncParallel
         try:
-            client = AsyncParallel(api_key=self._api_key)
+            load_dotenv(override=True)
+            active_api_key = os.getenv("PARALLEL_API_KEY") or self._api_key
+            
+            client = AsyncParallel(api_key=active_api_key)
 
             # The SDK natively maps search creation
             if hasattr(client, "search") and hasattr(client.search, "create"):
@@ -171,7 +179,10 @@ class ParallelSearchTool:
         # --- OFFICIAL PARALLEL-WEB SDK IMPLEMENTATION ---
         from parallel import AsyncParallel
         try:
-            client = AsyncParallel(api_key=self._api_key)
+            load_dotenv(override=True)
+            active_api_key = os.getenv("PARALLEL_API_KEY") or self._api_key
+            
+            client = AsyncParallel(api_key=active_api_key)
             if hasattr(client, "extract") and hasattr(client.extract, "create"):
                 result = await client.extract.create(urls=[url])
             else:

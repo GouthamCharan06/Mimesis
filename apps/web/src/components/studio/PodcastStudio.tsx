@@ -33,7 +33,7 @@ export function PodcastStudio() {
         setPlaybackState('generating_initial');
         setProcessedEventCount(0); // reset streaming cursor
         try {
-            const res = await fetch("http://localhost:8001/api/sessions", {
+            const res = await fetch("http://127.0.0.1:8001/api/sessions", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ expert_id: "mimesis", topic: selectedTopic })
@@ -59,7 +59,7 @@ export function PodcastStudio() {
             }
 
             if (turn.audio_path && audioRef.current) {
-                const targetUrl = `http://localhost:8001${turn.audio_path}`;
+                const targetUrl = `http://127.0.0.1:8001${turn.audio_path}`;
                 // Avoid reloading the same audio src
                 if (!audioRef.current.src.endsWith(turn.audio_path)) {
                      audioRef.current.src = targetUrl;
@@ -80,6 +80,17 @@ export function PodcastStudio() {
                         setPlaybackState('paused'); // Gracefully pause so the user can manually click Play
                     });
                 }
+            } else if (!turn.audio_path && turn.speaker !== "User") {
+                // Graceful fallback for omitted TTS bytes (e.g. Quota exhaustion)
+                console.warn("TTS API dropped the audio buffer for this turn. Calculating textual read time to simulate playback dynamically.");
+                const wordCount = (turn.text_content || "").split(" ").length;
+                const readingTimeMs = Math.max(3500, wordCount * 280); // baseline ~280ms/word
+                
+                const simTimer = setTimeout(() => {
+                    handleAudioEnded();
+                }, readingTimeMs);
+                
+                return () => clearTimeout(simTimer);
             }
         }
     }, [currentTurnIndex, playbackState, turns, returnStack]);
@@ -117,7 +128,7 @@ export function PodcastStudio() {
         }
         
         if (requiresStateUpdate && sessionId) {
-            fetch(`http://localhost:8001/api/sessions/${sessionId}`)
+            fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}`)
                .then(res => res.json())
                .then(data => {
                    if (data.turns) {
@@ -185,7 +196,7 @@ export function PodcastStudio() {
         setPlaybackState('researching');
         
         try {
-            const res = await fetch(`http://localhost:8001/api/sessions/${sessionId}/ask`, {
+            const res = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -242,6 +253,45 @@ export function PodcastStudio() {
         );
     };
 
+    // Render sleek progress bar for fast operations like interruptions
+    const renderProgressLoader = (stages: {id: string, label: string}[]) => {
+        const eventIds = events.map(e => e.event_type);
+        const stageIndexes = stages.map(s => eventIds.lastIndexOf(s.id));
+        const highestMatched = Math.max(...stageIndexes.filter(i => i !== -1));
+        
+        // Find which stage this maps to natively
+        let activeLabel = "Processing request...";
+        if (highestMatched !== -Infinity && highestMatched < stages.length) {
+            // Find the index in `stages` where the `id` === the id at `highestMatched`? No, stageIndexes gives 
+            // the index in `events` for each stage. We need to find which stage has the `highestMatched` index.
+            const stageIdx = stageIndexes.indexOf(highestMatched);
+            if (stageIdx !== -1) {
+                activeLabel = stages[stageIdx].label;
+            }
+        }
+        
+        // Calculate raw percentage: ((stage block index + 1) / total stages) * 100
+        const stageIdx = stageIndexes.indexOf(highestMatched);
+        const rawPercent = stageIdx === -1 ? 5 : ((stageIdx + 1) / stages.length) * 100;
+        const boundedPercent = Math.min(100, Math.max(5, rawPercent)); // 5% minimum
+
+        return (
+            <div className="flex flex-col gap-4 mt-8 w-full max-w-sm animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex justify-between items-center text-sm font-medium px-1">
+                    <div className="flex items-center gap-3 text-indigo-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-white drop-shadow-[0_0_8px_rgba(129,140,248,0.5)] text-[15px]">{activeLabel}</span>
+                    </div>
+                    <span className="text-zinc-500 font-mono text-xs">{Math.round(boundedPercent)}%</span>
+                </div>
+                
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden w-full relative opacity-90 mx-1 shadow-inner">
+                    <div className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(99,102,241,0.6)]" style={{ width: `${boundedPercent}%` }}></div>
+                </div>
+            </div>
+        );
+    };
+
     const GENERATION_STAGES = [
         { id: 'preparing_topic', label: 'Preparing episode topic' },
         { id: 'structuring_conversation', label: 'Structuring the conversation' },
@@ -293,12 +343,12 @@ export function PodcastStudio() {
         setAdaptationPayload(null);
         if (approved) {
              setPlaybackState('generating_initial');
-             const r = await fetch(`http://localhost:8001/api/sessions/${sessionId}/adapt`, { method: "POST" });
+             const r = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/adapt`, { method: "POST" });
              if (!r.ok) setPlaybackState('paused');
         } else {
              // Treat it as a standard simple question if user rejects the major overhaul
              setPlaybackState('researching');
-             const r = await fetch(`http://localhost:8001/api/sessions/${sessionId}/ask`, {
+             const r = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -464,7 +514,7 @@ export function PodcastStudio() {
                     </div>
 
                     <div className="mt-12 text-center w-full max-w-md">
-                        {playbackState === 'researching' && renderProgressChecklist(QUESTION_STAGES)}
+                        {playbackState === 'researching' && renderProgressLoader(QUESTION_STAGES)}
                         {(playbackState === 'playing' || playbackState === 'paused' || playbackState === 'interrupt_input' || playbackState === 'resuming') && turns[currentTurnIndex] && (
                             <div className="animate-in fade-in slide-in-from-bottom-2">
                                 <h2 className="text-2xl font-semibold mb-1">
@@ -529,13 +579,6 @@ export function PodcastStudio() {
                                             <Send className="w-4 h-4" />
                                         </button>
                                     </form>
-                                    <div className="flex flex-wrap gap-2 justify-center">
-                                        {["Wait, why is that important?", "Can you explain that deeper?", "Give me a real-world example."].map(q => (
-                                            <button type="button" key={q} onClick={() => setQuestion(q)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-full transition-colors border border-zinc-700">
-                                                {q}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
                             ) : (
                                 <button 

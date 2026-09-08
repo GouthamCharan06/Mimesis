@@ -7,9 +7,8 @@ Two separate compiled graphs:
       → RESPONSE_PLAYBACK → END
 
 Session state (PodcastSession) carries all context between invocations.
-The mandatory Parallel research path is enforced: there is NO edge from
-QUESTION_RECEIVED to EXPERT_RESPONSE_GENERATION that bypasses research.
-"""
+    Every question MUST go through the grounding pipeline unless it explicitly only requires rephrasing or uses existing context and disables research.
+    """
 
 from __future__ import annotations
 from typing import Any, TypedDict
@@ -100,15 +99,35 @@ async def gap_evaluation_node(state: MimesisPodcastState) -> dict:
         state["current_input"]["adaptation_payload"] = eval_result
         return {"session": state["session"], "events": state["events"]}
         
-    from app.domain.models import ResearchPlan, ResearchQuery
+    from app.domain.models import ResearchPlan, ResearchQuery, EvidenceAssessment
     from app.core.config import get_settings
     settings = get_settings()
-    
-    queries = [ResearchQuery(query_string=q["query_string"], intent=q["intent"]) for q in eval_result.get("queries", [])][:settings.max_parallel_queries_per_turn]
     
     current_q = state["session"].current_question
     fallback_text = current_q.text_content if current_q else "General inquiry"
     q_id = current_q.question_id if current_q else "guest_q"
+
+    # Intelligent bypass for simple reformulations/contextual questions
+    requires_new_search = eval_result.get("requires_new_search", True)
+    if not requires_new_search:
+        state["events"].append(AgentEvent(event_type=AgentEventType.PLANNING_RESEARCH, message="Bypassing external search. Answering purely from recent transcript context..."))
+        state["current_input"]["skip_research"] = True
+        
+        # Inject standard structural dependencies without running API fetch
+        state["session"].active_research_plan = ResearchPlan(
+            original_question_id=q_id,
+            queries=[],
+            assessment=EvidenceAssessment(
+                synthesis_summary="No additional internet search required. Please rely on your persona and the Recent Transcript Context to address this specific user request logically.",
+                contradictions_found=False,
+                is_uncertain=False,
+                uncertainty_reason=""
+            )
+        )
+        state["session"].transition_to(WorkflowState.EXPERT_RESPONSE_GENERATION)
+        return {"session": state["session"], "events": state["events"], "current_input": state["current_input"]}
+    
+    queries = [ResearchQuery(query_string=q["query_string"], intent=q["intent"]) for q in eval_result.get("queries", [])][:settings.max_parallel_queries_per_turn]
     
     if not queries:
         queries = [ResearchQuery(query_string=fallback_text, intent="fallback")]
@@ -204,18 +223,21 @@ def build_question_graph() -> StateGraph:
     graph.add_node("tts_generation", tts_generation_node)
     graph.add_node("response_playback", response_playback_node)
 
-    def route_adaptation(state: MimesisPodcastState):
+    def route_after_evaluation(state: MimesisPodcastState):
         if state["session"].workflow_state == WorkflowState.ADAPTATION_PROPOSED:
             return "end"
+        if state.get("current_input", {}).get("skip_research", False):
+            return "skip_research"
         return "continue"
 
     graph.set_entry_point("question_received")
     graph.add_edge("question_received", "gap_evaluation")
     graph.add_conditional_edges(
         "gap_evaluation",
-        route_adaptation,
+        route_after_evaluation,
         {
             "end": END,
+            "skip_research": "expert_response_generation",
             "continue": "parallel_research"
         }
     )

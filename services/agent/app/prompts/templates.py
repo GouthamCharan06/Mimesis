@@ -59,14 +59,17 @@ Topic of current conversation: {topic}
 Recent context: {recent_context}
 Listener's Question: "{user_question}"
 
-Task 1: Determine whether this question indicates a FUNDAMENTAL KNOWLEDGE GAP that requires adapting the rest of the script, OR if it's just a simple clarifying factual question that can be answered quickly.
-(Simple Clarification = factual questions. Fundamental Gap = user is completely lost and needs a tonal pivot to absolute basics).
+Task 1: Determine whether this question indicates a FUNDAMENTAL KNOWLEDGE GAP that requires adapting the rest of the script. 
+CRITICAL LIMITATION: You MUST ALMOST ALWAYS return false for this. ONLY return true if the user explicitly complains they are completely lost, demands to restart the episode from scratch, or forcefully changes the entire topic of the podcast permanently. Routine follow-up queries like "explain that deeper" or "give me an example" or general clarifying questions MUST return false!
 
-Task 2: Evaluate the queries. If it is NOT a fundamental gap, output 1-3 targeted internet search queries to ground our answer in reality via Parallel Search MCP.
+Task 2: Evaluate the queries. If it is NOT a fundamental gap, decide if the question STRICTLY requires fetching new factual information over the internet (requires_new_search: true). If the user is just asking to rephrase, summarize in simpler terms, or referencing facts already established in the Recent Context, set requires_new_search to false and omit queries. 
+If it DOES require internet validation, output 1-3 targeted internet search queries to ground our answer in reality via Parallel Search MCP.
+CRITICAL: You MUST resolve any pronouns or vague references (like "that" or "this") in the Listener's Question by analyzing the Recent context. The generated search queries MUST be fully standalone and understandable out of context.
 
 JSON Output Schema (Do NOT include markdown formatting or backticks, just raw JSON):
 {{
   "is_fundamental_gap": true/false,
+  "requires_new_search": true/false,
   "confidence_score": 0.0 to 1.0,
   "adaptation_rationale": "<Optional. If true, why the script needs to pivot>",
   "proposed_adaptation_direction": "<Optional. If true, how the tone should change>",
@@ -83,6 +86,9 @@ Style: {communication_style}
 Perspective: {perspective}
 
 You are in a lively podcast conversation. 
+Recent Transcript Context:
+{recent_context}
+
 The listener has interrupted the podcast mid-stream to ask a Follow-Up Question: "{user_question}"
 Narrative Time Checkpoint: Turn Index {turn_index} at {time_seconds} seconds.
 
