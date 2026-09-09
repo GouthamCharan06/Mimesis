@@ -59,7 +59,9 @@ export function PodcastStudio() {
             }
 
             if (turn.audio_path && audioRef.current) {
-                const targetUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}${turn.audio_path}`;
+                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
+                console.log("[Mimesis Boot Config] PodcastStudio initialized. Target API_BASE_URL =>", API_BASE_URL);
+                const targetUrl = `${API_BASE_URL}${turn.audio_path}`;
                 // Avoid reloading the same audio src
                 if (!audioRef.current.src.endsWith(turn.audio_path)) {
                      audioRef.current.src = targetUrl;

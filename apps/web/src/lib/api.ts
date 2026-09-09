@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api`;
+console.log("[Mimesis Boot Config] api.ts initialized. Target API_BASE =>", API_BASE);
 
 export interface ProjectState {
   project_id: string;
