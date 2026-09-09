@@ -50,13 +50,15 @@ class ExpertPersonaAgent:
             # Append interaction to turns history
             session.turns.append(ConversationTurn(
                 speaker="User",
-                text_content=session.current_question.text_content
+                text_content=session.current_question.text_content,
+                is_interruption=True
             ))
             
             session.turns.append(ConversationTurn(
                 speaker=session.expert_profile.name,
                 text_content=resp.final_text,
-                research_evidence_ids=resp.based_on_evidence_ids
+                research_evidence_ids=resp.based_on_evidence_ids,
+                is_interruption=True
             ))
             
         except Exception as e:

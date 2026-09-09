@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     google_cloud_location: str = Field(default="us-central1")
 
     # --- Gemini / Vertex AI ---
+    gemini_api_key: str | None = Field(default=None)
     gemini_model: str = Field(default="gemini-3.1-flash")
     gemini_thinking_model: str = Field(default="gemini-2.5-pro")
 

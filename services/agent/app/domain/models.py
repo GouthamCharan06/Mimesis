@@ -57,6 +57,7 @@ class ConversationTurn(BaseModel):
     text_content: str
     audio_path: str | None = None
     research_evidence_ids: list[str] = Field(default_factory=list)
+    is_interruption: bool = False
 
 
 class UserQuestion(BaseModel):

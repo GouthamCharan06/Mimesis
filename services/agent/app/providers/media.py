@@ -139,7 +139,12 @@ class GeminiTTSProvider(TextToSpeechService):
                         break
 
         if not raw_audio:
-            raise ValueError("Gemini TTS returned no audio data in response.")
+            fallback_reason = "Unknown"
+            if response.candidates and response.candidates[0].finish_reason:
+                fallback_reason = f"Finish Reason: {response.candidates[0].finish_reason}"
+            if response.prompt_feedback:
+                fallback_reason += f" | Prompt Feedback: {response.prompt_feedback}"
+            raise ValueError(f"Gemini TTS returned no audio data in response. {fallback_reason}")
 
         # Gemini SDK returns raw 24kHz 16-bit PCM bytes. We must wrap it in a valid RIFF/WAV container.
         import wave

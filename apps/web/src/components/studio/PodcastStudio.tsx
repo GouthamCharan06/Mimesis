@@ -160,7 +160,16 @@ export function PodcastStudio() {
         
         // Normal sequential advancement
         if (currentTurnIndex < turns.length - 1) {
-            setCurrentTurnIndex(prev => prev + 1);
+            // Traverse forward until we find a non-interruption turn (to prevent re-listening to old interruptions appended at the end)
+            let targetIdx = currentTurnIndex + 1;
+            while (targetIdx < turns.length && turns[targetIdx].is_interruption) {
+                targetIdx++;
+            }
+            if (targetIdx >= turns.length) {
+                setPlaybackState('paused'); // Real episode content is finished
+                return;
+            }
+            setCurrentTurnIndex(targetIdx);
         } else {
             setPlaybackState('paused'); // Reached end of currently generated content
         }

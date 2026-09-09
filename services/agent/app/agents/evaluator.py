@@ -34,6 +34,8 @@ class GapEvaluatorAgent:
         try:
             res = await self.gemini.generate_text(prompt=prompt)
             data = json.loads(_clean_json(res))
+            if not isinstance(data, dict):
+                raise ValueError("JSON result is not a dictionary")
             return data
         except Exception as e:
             # On failure, safely fallback to basic Q&A
