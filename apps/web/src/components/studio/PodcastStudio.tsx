@@ -33,7 +33,7 @@ export function PodcastStudio() {
         setPlaybackState('generating_initial');
         setProcessedEventCount(0); // reset streaming cursor
         try {
-            const res = await fetch("http://127.0.0.1:8001/api/sessions", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ expert_id: "mimesis", topic: selectedTopic })
@@ -59,7 +59,7 @@ export function PodcastStudio() {
             }
 
             if (turn.audio_path && audioRef.current) {
-                const targetUrl = `http://127.0.0.1:8001${turn.audio_path}`;
+                const targetUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}${turn.audio_path}`;
                 // Avoid reloading the same audio src
                 if (!audioRef.current.src.endsWith(turn.audio_path)) {
                      audioRef.current.src = targetUrl;
@@ -128,7 +128,7 @@ export function PodcastStudio() {
         }
         
         if (requiresStateUpdate && sessionId) {
-            fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}`)
                .then(res => res.json())
                .then(data => {
                    if (data.turns) {
@@ -205,7 +205,7 @@ export function PodcastStudio() {
         setPlaybackState('researching');
         
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/ask`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -352,12 +352,12 @@ export function PodcastStudio() {
         setAdaptationPayload(null);
         if (approved) {
              setPlaybackState('generating_initial');
-             const r = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/adapt`, { method: "POST" });
+             const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/adapt`, { method: "POST" });
              if (!r.ok) setPlaybackState('paused');
         } else {
              // Treat it as a standard simple question if user rejects the major overhaul
              setPlaybackState('researching');
-             const r = await fetch(`http://127.0.0.1:8001/api/sessions/${sessionId}/ask`, {
+             const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 

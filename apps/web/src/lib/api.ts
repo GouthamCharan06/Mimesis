@@ -3,7 +3,7 @@
  */
 import { useEffect, useState } from 'react';
 
-const API_BASE = 'http://localhost:8001/api';
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api`;
 
 export interface ProjectState {
   project_id: string;
