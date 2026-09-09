@@ -141,7 +141,7 @@ export const api = {
 /**
  * Hook to stream SSE events from a given project.
  */
-export function useAgentStream(projectId: string | null) {
+export function useAgentStream(projectId: string | null, dynamicApiBaseUrl: string = "http://localhost:8001") {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [currentState, setCurrentState] = useState<string>('UNKNOWN');
   const [isConnected, setIsConnected] = useState(false);
@@ -149,7 +149,7 @@ export function useAgentStream(projectId: string | null) {
   useEffect(() => {
     if (!projectId) return;
 
-    const eventSource = new EventSource(`${API_BASE}/sessions/${projectId}/events`);
+    const eventSource = new EventSource(`${dynamicApiBaseUrl}/api/sessions/${projectId}/events`);
 
     eventSource.onopen = () => setIsConnected(true);
 

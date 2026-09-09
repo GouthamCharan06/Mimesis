@@ -83,8 +83,11 @@ class InvalidStateTransitionError(MimesisError):
         super().__init__(message, ErrorCode.INVALID_STATE_TRANSITION, 409, **kwargs)
 
 
-async def mimesis_error_handler(request: Request, exc: MimesisError) -> JSONResponse:
+async def mimesis_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle MimesisError exceptions with structured responses."""
+    if not isinstance(exc, MimesisError):
+        return await unhandled_error_handler(request, exc)
+        
     logger.error(
         "application_error",
         error_code=exc.error_code,

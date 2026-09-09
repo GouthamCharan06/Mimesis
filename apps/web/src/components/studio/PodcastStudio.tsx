@@ -7,6 +7,16 @@ type PlaybackState = 'setup' | 'generating_initial' | 'playing' | 'paused' | 'in
 
 export function PodcastStudio() {
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [dynamicApiUrl, setDynamicApiUrl] = useState<string>("http://localhost:8001");
+
+    useEffect(() => {
+        fetch("/api/config")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && data.API_URL) setDynamicApiUrl(data.API_URL.replace(/\/$/, ""));
+            })
+            .catch(err => console.warn("Failed to load runtime config", err));
+    }, []);
     const [turns, setTurns] = useState<any[]>([]);
     const [researchEvidence, setResearchEvidence] = useState<any[]>([]);
     const [question, setQuestion] = useState("");
@@ -26,14 +36,14 @@ export function PodcastStudio() {
     const audioRef = useRef<HTMLAudioElement>(null);
     const transcriptRef = useRef<HTMLDivElement>(null);
 
-    const { events } = useAgentStream(sessionId);
+    const { events } = useAgentStream(sessionId, dynamicApiUrl);
 
     // Initial Fetch
     const initPodcast = async (selectedTopic: string) => {
         setPlaybackState('generating_initial');
         setProcessedEventCount(0); // reset streaming cursor
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions`, {
+            const res = await fetch(`${dynamicApiUrl}/api/sessions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ expert_id: "mimesis", topic: selectedTopic })
@@ -59,7 +69,7 @@ export function PodcastStudio() {
             }
 
             if (turn.audio_path && audioRef.current) {
-                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
+                const API_BASE_URL = dynamicApiUrl;
                 console.log("[Mimesis Boot Config] PodcastStudio initialized. Target API_BASE_URL =>", API_BASE_URL);
                 const targetUrl = `${API_BASE_URL}${turn.audio_path}`;
                 // Avoid reloading the same audio src
@@ -130,7 +140,7 @@ export function PodcastStudio() {
         }
         
         if (requiresStateUpdate && sessionId) {
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}`)
+            fetch(`${dynamicApiUrl}/api/sessions/${sessionId}`)
                .then(res => res.json())
                .then(data => {
                    if (data.turns) {
@@ -207,7 +217,7 @@ export function PodcastStudio() {
         setPlaybackState('researching');
         
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/ask`, {
+            const res = await fetch(`${dynamicApiUrl}/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -354,12 +364,12 @@ export function PodcastStudio() {
         setAdaptationPayload(null);
         if (approved) {
              setPlaybackState('generating_initial');
-             const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/adapt`, { method: "POST" });
+             const r = await fetch(`${dynamicApiUrl}/api/sessions/${sessionId}/adapt`, { method: "POST" });
              if (!r.ok) setPlaybackState('paused');
         } else {
              // Treat it as a standard simple question if user rejects the major overhaul
              setPlaybackState('researching');
-             const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001"}/api/sessions/${sessionId}/ask`, {
+             const r = await fetch(`${dynamicApiUrl}/api/sessions/${sessionId}/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
